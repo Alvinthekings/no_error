@@ -32,7 +32,7 @@
 
     <!-- STATISTICS CARDS -->
     <div class="row g-3 mb-4">
-      <div class="col-6 col-lg-3">
+      <div class="col-6 col-lg-4">
         <div class="card card-summary stats-card h-100" style="background-color: #7CB342; color: white;">
           <div class="card-body text-center">
             <i class="ri-time-line display-6 mb-2"></i>
@@ -41,30 +41,21 @@
           </div>
         </div>
       </div>
-      <div class="col-6 col-lg-3">
+      <div class="col-6 col-lg-4">
         <div class="card card-summary stats-card h-100" style="background-color: #28a745; color: white;">
           <div class="card-body text-center">
-            <i class="ri-search-line display-6 mb-2"></i>
-            <div>Investigating</div>
-            <h3>{{ $stats['investigating'] ?? 0 }}</h3>
+            <i class="ri-loader-4-line display-6 mb-2"></i>
+            <div>In Progress</div>
+            <h3>{{ $stats['in_progress'] ?? 0 }}</h3>
           </div>
         </div>
       </div>
-      <div class="col-6 col-lg-3">
+      <div class="col-6 col-lg-4">
         <div class="card card-summary stats-card h-100" style="background-color: #20c997; color: black;">
           <div class="card-body text-center">
             <i class="ri-check-line display-6 mb-2"></i>
             <div>Resolved</div>
             <h3>{{ $stats['resolved'] ?? 0 }}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="card card-summary stats-card h-100" style="background-color: #2d6a3e; color: white;">
-          <div class="card-body text-center">
-            <i class="ri-error-warning-line display-6 mb-2"></i>
-            <div>Major Cases</div>
-            <h3>{{ $stats['major'] ?? 0 }}</h3>
           </div>
         </div>
       </div>
@@ -101,6 +92,7 @@
                 <th>Violation</th>
                 <th>Date</th>
                 <th>Sanction</th>
+                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -127,6 +119,17 @@
                   {{ $violation->sanction ?? 'N/A' }}
                 </td>
                 <td>
+                  @if($violation->status === 'pending')
+                    <span class="badge bg-warning text-dark">Pending</span>
+                  @elseif($violation->status === 'in_progress')
+                    <span class="badge bg-info text-dark">In Progress</span>
+                  @elseif($violation->status === 'resolved')
+                    <span class="badge bg-success">Resolved</span>
+                  @else
+                    <span class="badge bg-secondary">Unknown</span>
+                  @endif
+                </td>
+                <td>
                   <div class="btn-group" role="group">
                     <button type="button" class="btn btn-sm btn-outline-primary"
                             onclick="viewViolation({{ $violation->id }})"
@@ -143,12 +146,18 @@
                             title="Delete">
                       <i class="ri-delete-bin-line"></i>
                     </button>
+                    <!-- NEW Forward Button -->
+                    <button type="button" class="btn btn-sm btn-outline-info"
+                            onclick="forwardViolation({{ $violation->id }})"
+                            title="Forward Violation">
+                      <i class="ri-send-plane-line"></i>
+                    </button>
                   </div>
                 </td>
               </tr>
               @empty
               <tr>
-                <td colspan="5" class="text-center py-5">
+                <td colspan="6" class="text-center py-5">
                   <i class="ri-alert-line display-4 text-muted"></i>
                   <p class="text-muted mt-2">No violations found</p>
                 </td>
@@ -214,8 +223,6 @@
                 </div>
                 <small class="text-muted">Start typing to search for students</small>
               </div>
-
-
             </div>
 
             <div class="col-md-6">
@@ -228,12 +235,8 @@
                 <label class="form-label fw-bold">Violation Time</label>
                 <input type="time" class="form-control" id="violationTime" name="violation_time" value="{{ now()->format('H:i') }}">
               </div>
-
-
             </div>
           </div>
-
-
         </div>
 
         <div class="modal-footer">
