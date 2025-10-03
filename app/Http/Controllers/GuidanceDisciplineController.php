@@ -166,7 +166,7 @@ class GuidanceDisciplineController extends Controller
         $totalStudents = Student::count();
         $facesRegistered = 0; // Will be implemented when face_encoding column is added
         
-        // Get violations this month using violation_date
+        // Get os this month using violation_date
         $violationsThisMonth = Violation::whereMonth('violation_date', now()->month)
             ->whereYear('violation_date', now()->year)
             ->count();
@@ -176,7 +176,18 @@ class GuidanceDisciplineController extends Controller
         $pendingViolations = Violation::where('status', 'pending')->count();
         $violationsToday = Violation::whereDate('violation_date', now()->toDateString())->count();
         $majorViolations = Violation::where('severity', 'major')->count();
-        
+
+        // Get weekly violations (last 7 days)
+        $weeklyViolations = Violation::with(['student', 'reportedBy'])
+            ->where('violation_date', '>=', now()->subDays(7))
+            ->orderBy('violation_date', 'desc')
+            ->orderBy('violation_time', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Count of weekly violations
+        $weeklyViolationsCount = Violation::where('violation_date', '>=', now()->subDays(7))->count();
+
         $stats = [
             'total_students' => $totalStudents,
             'faces_registered' => $facesRegistered,
@@ -185,9 +196,10 @@ class GuidanceDisciplineController extends Controller
             'pending_violations' => $pendingViolations,
             'violations_today' => $violationsToday,
             'major_violations' => $majorViolations,
+            'weekly_violations' => $weeklyViolationsCount,
         ];
 
-        return view('guidancediscipline.index', compact('stats'));
+        return view('guidancediscipline.index', compact('stats', 'weeklyViolations'));
     }
 
     // Logout
@@ -339,17 +351,36 @@ class GuidanceDisciplineController extends Controller
     /**
      * Display violations index page
      */
-    public function violationsIndex()
+    public function violationsIndex(Request $request)
     {
         // Check permission
         // if (!auth()->user()->can('view_violations')) {
         //     abort(403, 'Unauthorized access');
         // }
 
-        $violations = Violation::with(['student', 'reportedBy', 'resolvedBy'])
-            ->where('severity', 'major')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $query = Violation::with(['student', 'reportedBy', 'resolvedBy'])
+            ->where('severity', 'major');
+
+        // Search functionality
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('student', function($sq) use ($search) {
+                    $sq->where('first_name', 'LIKE', "%{$search}%")
+                      ->orWhere('last_name', 'LIKE', "%{$search}%")
+                      ->orWhere('student_id', 'LIKE', "%{$search}%");
+                })
+                ->orWhere('title', 'LIKE', "%{$search}%")
+                ->orWhere('description', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Date filter
+        if ($request->has('date') && !empty($request->date)) {
+            $query->whereDate('violation_date', $request->date);
+        }
+
+        $violations = $query->orderBy('created_at', 'desc')->paginate(20);
 
         $students = Student::select('id', 'first_name', 'last_name', 'student_id')
             ->orderBy('last_name', 'asc')
@@ -361,6 +392,13 @@ class GuidanceDisciplineController extends Controller
             'resolved' => Violation::where('status', 'resolved')->where('severity', 'major')->count(),
             'major' => Violation::where('severity', 'major')->count(),
         ];
+
+        if ($request->ajax()) {
+            return response()->json([
+                'violations' => $violations,
+                'stats' => $stats
+            ]);
+        }
 
         return view('guidancediscipline.student-violations', compact('violations', 'students', 'stats'));
     }

@@ -17,7 +17,7 @@
 
         <!-- SUMMARY CARDS -->
         <div class="row g-3 mb-5">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-3">
             <div class="card card-summary card-violations h-100">
               <div class="card-body text-center">
                 <i class="ri-alert-line display-6 mb-2"></i>
@@ -27,7 +27,7 @@
             </div>
           </div>
 
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-3">
             <div class="card card-summary card-counsel h-100">
               <div class="card-body text-center">
                 <i class="ri-flag-2-line display-6 mb-2"></i>
@@ -37,12 +37,22 @@
             </div>
           </div>
 
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-3">
             <div class="card card-summary card-violations h-100">
               <div class="card-body text-center">
                 <i class="ri-error-warning-line display-6 mb-2"></i>
                 <div>Major Violations</div>
                 <h3>{{ $stats['major_violations'] ?? 0 }}</h3>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-3">
+            <div class="card card-summary card-weekly h-100">
+              <div class="card-body text-center">
+                <i class="ri-calendar-line display-6 mb-2"></i>
+                <div>Weekly Violations</div>
+                <h3>{{ $stats['weekly_violations'] ?? 0 }}</h3>
               </div>
             </div>
           </div>
@@ -93,8 +103,9 @@
           </div>
         </div> --}}
 
-        {{-- <!-- VIOLATIONS TABLE -->
-        <h4 class="section-title">Recent Violations</h4>
+        <!-- WEEKLY VIOLATIONS TABLE -->
+        @if($weeklyViolations->count() > 0)
+        <h4 class="section-title">Weekly Violations</h4>
         <div class="table-responsive mb-5">
           <table class="table table-striped align-middle">
             <thead>
@@ -108,23 +119,30 @@
               </tr>
             </thead>
             <tbody>
+              @foreach($weeklyViolations as $index => $violation)
               <tr>
-                <td>1</td>
-                <td>John Smith</td>
-                <td>Late to class</td>
-                <td>Jul 12, 2024</td>
-                <td><span class="badge bg-warning text-dark">Minor</span></td>
+                <td>{{ $index + 1 }}</td>
+                <td>{{ $violation->student->first_name }} {{ $violation->student->last_name }}</td>
+                <td>{{ $violation->title }}</td>
+                <td>{{ $violation->violation_date->format('M j, Y') }}</td>
+                <td>
+                  <span class="badge bg-{{ $violation->severity_color }} text-white">
+                    {{ ucfirst($violation->severity) }}
+                  </span>
+                </td>
                 <td class="text-center">
-                  <button class="btn btn-sm btn-outline-primary me-1">
-                    <i class="ri-eye-line"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary">
-                    <i class="ri-edit-line"></i>
+                  <button class="btn btn-sm btn-outline-primary view-violation-btn"
+                          data-violation-id="{{ $violation->id }}"
+                          data-bs-toggle="modal"
+                          data-bs-target="#violationModal">
+                    <i class="ri-eye-line"></i> View
                   </button>
                 </td>
               </tr>
+              @endforeach
             </tbody>
           </table>
-        </div> --}}
+        </div>
+        @endif
       </main>
 </x-guidance-layout>

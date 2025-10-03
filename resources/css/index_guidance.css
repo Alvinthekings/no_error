@@ -79,6 +79,16 @@ body {
 .card-summary { color: #fff; }
 .card-violations  { background-color: var(--dark-green); }
 .card-counsel     { background-color: var(--secondary-color); color: var(--dark-green); }
+.card-weekly {
+  background-color: var(--accent-color);
+  color: var(--white);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Tables */
 .table thead {

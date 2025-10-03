@@ -14,6 +14,65 @@ function debounce(func, wait) {
   };
 }
 
+// Global offense options
+window.offenseOptions = {
+    minor: [
+        "Not wearing of prescribed uniform and Improper wearing of school ID",
+        "Unauthorized use of cellphones and other electronic gadgets inside the classroom",
+        "Wearing earrings (for male students) and multiple earrings (for female students)",
+        "Not sporting the prescribed haircut",
+        "Unauthorized use of electronic gadgets inside the classroom",
+        "Loitering inside the school"
+    ],
+    major: {
+        "Category 1": [
+            "Borrowing, lending, and tampering of school ID",
+            "Disrespect to school logo",
+            "Unauthorized use of school forms",
+            "Loitering inside the campus",
+            "Littering inside the campus",
+            "Eating outside the classroom during class hours",
+            "Non-observance of Clean As You Go policy",
+            "Using profane and indecent language",
+            "Bringing pornographic materials and browsing pornographic sites",
+            "Smoking, e-cigarettes and similar acts",
+            "Participating in any form of gambling",
+            "Threatening fellow students",
+            "Leaving the school without a valid gate pass",
+            "Making an alarming fake bomb or fire threat or joke",
+            "Any offense analogous to the above"
+        ],
+        "Category 2": [
+            "Disrespecting the Philippine flag and other national / institutional symbols",
+            "Vandalism inside the campus",
+            "Engaging in immodest act such as public display of affection",
+            "Bringing intoxicating drinks or alcoholic beverages",
+            "Cheating during examination / acting as accomplice",
+            "Tampering with test scores",
+            "Cutting classes",
+            "Gross scandalous behavior inside/outside the campus",
+            "Act that malign the good name and reputation of the school",
+            "Withholding information during formal investigation",
+            "Habitual disregard to school policies",
+            "Any offense analogous to the above"
+        ],
+        "Category 3": [
+            "Bullying including physical, emotional and cyberbullying",
+            "Forging the signature of parents/guardian in school documents",
+            "Forging the signature of teachers or persons in authority",
+            "Assaulting or showing disrespect to teachers or persons in authority",
+            "Disrespectful or abusive behavior towards any faculty member",
+            "Possession, pushing, use of dangerous drugs, deadly weapons or explosives",
+            "Recruiting or engaging in pseudo fraternities / gangs",
+            "Engaging in fight and assaulting fellow students",
+            "Hazing, extortion and engaging in pre-marital sex",
+            "Deception of school authorities",
+            "Stealing school or others' personal property",
+            "Any offense analogous to the above"
+        ]
+    }
+};
+
 window.editViolation = function(violationId) {
     console.log('🚀 editViolation called with id:', violationId);
 
@@ -362,73 +421,16 @@ function getViolationTitle() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Offense library
-    const offenseOptions = {
-        minor: [
-            "Not wearing of prescribed uniform and Improper wearing of school ID",
-            "Unauthorized use of cellphones and other electronic gadgets inside the classroom",
-            "Wearing earrings (for male students) and multiple earrings (for female students)",
-            "Not sporting the prescribed haircut",
-            "Unauthorized use of electronic gadgets inside the classroom",
-            "Loitering inside the school"
-        ],
-        major: {
-            "Category 1": [
-                "Borrowing, lending, and tampering of school ID",
-                "Disrespect to school logo",
-                "Unauthorized use of school forms",
-                "Loitering inside the campus",
-                "Littering inside the campus",
-                "Eating outside the classroom during class hours",
-                "Non-observance of Clean As You Go policy",
-                "Using profane and indecent language",
-                "Bringing pornographic materials and browsing pornographic sites",
-                "Smoking, e-cigarettes and similar acts",
-                "Participating in any form of gambling",
-                "Threatening fellow students",
-                "Leaving the school without a valid gate pass",
-                "Making an alarming fake bomb or fire threat or joke",
-                "Any offense analogous to the above"
-            ],
-            "Category 2": [
-                "Disrespecting the Philippine flag and other national / institutional symbols",
-                "Vandalism inside the campus",
-                "Engaging in immodest act such as public display of affection",
-                "Bringing intoxicating drinks or alcoholic beverages",
-                "Cheating during examination / acting as accomplice",
-                "Tampering with test scores",
-                "Cutting classes",
-                "Gross scandalous behavior inside/outside the campus",
-                "Act that malign the good name and reputation of the school",
-                "Withholding information during formal investigation",
-                "Habitual disregard to school policies",
-                "Any offense analogous to the above"
-            ],
-            "Category 3": [
-                "Bullying including physical, emotional and cyberbullying",
-                "Forging the signature of parents/guardian in school documents",
-                "Forging the signature of teachers or persons in authority",
-                "Assaulting or showing disrespect to teachers or persons in authority",
-                "Disrespectful or abusive behavior towards any faculty member",
-                "Possession, pushing, use of dangerous drugs, deadly weapons or explosives",
-                "Recruiting or engaging in pseudo fraternities / gangs",
-                "Engaging in fight and assaulting fellow students",
-                "Hazing, extortion and engaging in pre-marital sex",
-                "Deception of school authorities",
-                "Stealing school or others' personal property",
-                "Any offense analogous to the above"
-            ]
-        }
-    };
+
 
     // Create reverse mapping: title -> {severity, category}
-    const titleToSeverityMap = {};
-    offenseOptions.minor.forEach(title => {
-        titleToSeverityMap[title] = { severity: 'minor', category: null };
+    window.titleToSeverityMap = {};
+    window.offenseOptions.minor.forEach(title => {
+        window.titleToSeverityMap[title] = { severity: 'minor', category: null };
     });
-    Object.keys(offenseOptions.major).forEach(category => {
-        offenseOptions.major[category].forEach(title => {
-            titleToSeverityMap[title] = { severity: 'major', category: category };
+    Object.keys(window.offenseOptions.major).forEach(category => {
+        window.offenseOptions.major[category].forEach(title => {
+            window.titleToSeverityMap[title] = { severity: 'major', category: category };
         });
     });
 
@@ -442,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedTitle = this.value;
 
             // Automatically determine severity and category if title is predefined
-            if (selectedTitle && selectedTitle !== 'custom' && titleToSeverityMap[selectedTitle]) {
+            if (selectedTitle && selectedTitle !== 'custom' && window.titleToSeverityMap[selectedTitle]) {
                 // Re-select the current title
                 this.value = selectedTitle;
             }
@@ -469,16 +471,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const submitBtn = document.querySelector('#recordViolationModal button[type="submit"]');
             const studentSearchInput = document.getElementById('violationStudentSearch');
             if (submitBtn) {
-                const severity = titleToSeverityMap[selectedTitle]?.severity;
+                const severity = window.titleToSeverityMap[selectedTitle]?.severity;
                 if (severity === 'major') {
-                    submitBtn.textContent = 'Proceed with the incident form';
-                    submitBtn.type = 'button';
-                    submitBtn.onclick = () => showIncidentForm();
+                    // Automatically show incident form for major violations
+                    showIncidentForm();
                     // Disable student search input for major violations
                     if (studentSearchInput) {
                         studentSearchInput.disabled = true;
                     }
                 } else {
+                    // For minor violations, close incident form if open and show violation form
+                    window.ModalManager.hide('incidentFormModal');
                     submitBtn.textContent = 'Submit Violation';
                     submitBtn.type = 'submit';
                     submitBtn.onclick = null;
@@ -499,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
         violationTitleSelect.innerHTML = '<option value="">-- Select Offense --</option>';
 
         // Add minor offenses
-        offenseOptions.minor.forEach(offense => {
+        window.offenseOptions.minor.forEach(offense => {
             const option = document.createElement('option');
             option.value = offense;
             option.textContent = offense;
@@ -507,8 +510,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Add major offenses from all categories
-        Object.keys(offenseOptions.major).forEach(category => {
-            offenseOptions.major[category].forEach(offense => {
+        Object.keys(window.offenseOptions.major).forEach(category => {
+            window.offenseOptions.major[category].forEach(offense => {
                 const option = document.createElement('option');
                 option.value = offense;
                 option.textContent = offense;
@@ -615,8 +618,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Manually append all required fields from the form
                     const title = getViolationTitle();
-                    const severity = titleToSeverityMap[title]?.severity || 'minor';
-                    const category = titleToSeverityMap[title]?.category || null;
+                    const severity = window.titleToSeverityMap[title]?.severity || 'minor';
+                    const category = window.titleToSeverityMap[title]?.category || null;
                     formData.append('student_id', student.id);
                     formData.append('title', title);
                     formData.append('violation_date', dateEl.value);
@@ -1295,6 +1298,20 @@ window.useCustomOffense = function() {
     }
 }
 
+// Function to use custom offense in incident form
+window.useIncidentCustomOffense = function() {
+    const customInput = document.getElementById('incidentCustomOffenseText');
+    const violationTitleSelect = document.getElementById('incidentViolation');
+
+    if (customInput && customInput.value.trim()) {
+        // Create a temporary option with the custom value
+        violationTitleSelect.innerHTML = `<option value="${customInput.value.trim()}" selected>${customInput.value.trim()}</option>`;
+
+        // Remove the custom input field
+        customInput.closest('.input-group').remove();
+    }
+}
+
 window.openViolationModal = function(student) {
     // Add student to selected
     if (!window.selectedStudents.some(s => s.id === student.id)) {
@@ -1451,8 +1468,6 @@ function initializeIncidentStudentSearch() {
     }
 }
 
-const titleToSeverityMap = window.titleToSeverityMap || {};
-
 function showIncidentForm() {
     // Get violation data
     const violationTitle = getViolationTitle();
@@ -1471,6 +1486,13 @@ function showIncidentForm() {
                 </div>
                 <div class="modal-body">
                     <form id="incidentForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Offense/Title</label>
+                            <select class="form-select" id="incidentViolation" required>
+                                <!-- Options will be populated by JavaScript -->
+                            </select>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold">Reported Students</label>
                             <div class="position-relative">
@@ -1503,12 +1525,7 @@ function showIncidentForm() {
                             <label class="form-label fw-bold">Details</label>
                             <textarea class="form-control" id="incidentDetails" rows="4" required></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Violation</label>
-                            <textarea class="form-control" id="incidentViolation" rows="2" readonly>${violationTitle}: ${violationDescription}</textarea>
-                        </div>
-                    </form>
-                </div>
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" onclick="generateIncidentForm()">Generate Incident Form</button>
@@ -1527,6 +1544,82 @@ function showIncidentForm() {
 
     // Initialize student search functionality for incident form
     initializeIncidentStudentSearch();
+
+    // Populate offense dropdown
+    const incidentViolationSelect = document.getElementById('incidentViolation');
+    if (incidentViolationSelect) {
+        // Clear current options
+        incidentViolationSelect.innerHTML = '<option value="">-- Select Offense --</option>';
+
+        // Add minor offenses
+        window.offenseOptions.minor.forEach(offense => {
+            const option = document.createElement('option');
+            option.value = offense;
+            option.textContent = offense;
+            if (offense === violationTitle) option.selected = true;
+            incidentViolationSelect.appendChild(option);
+        });
+
+        // Add major offenses from all categories
+        Object.keys(window.offenseOptions.major).forEach(category => {
+            window.offenseOptions.major[category].forEach(offense => {
+                const option = document.createElement('option');
+                option.value = offense;
+                option.textContent = offense;
+                if (offense === violationTitle) option.selected = true;
+                incidentViolationSelect.appendChild(option);
+            });
+        });
+
+        // Add custom option
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = '-- Custom Offense --';
+        incidentViolationSelect.appendChild(customOption);
+
+        // Add event listener for custom offense and form switching
+        incidentViolationSelect.addEventListener('change', function() {
+            const selectedTitle = this.value;
+
+            // Handle custom offense input
+            const existingCustomInput = document.querySelector('#incidentCustomOffenseInput');
+            if (selectedTitle === 'custom') {
+                if (!existingCustomInput) {
+                    // Create custom input field
+                    const inputGroup = document.createElement('div');
+                    inputGroup.className = 'input-group mt-2';
+                    inputGroup.id = 'incidentCustomOffenseInput';
+                    inputGroup.innerHTML = `
+                        <input type="text" class="form-control" id="incidentCustomOffenseText" placeholder="Enter custom offense...">
+                        <button type="button" class="btn btn-outline-secondary" onclick="useIncidentCustomOffense()">Use</button>
+                    `;
+                    incidentViolationSelect.parentNode.appendChild(inputGroup);
+                }
+            } else if (existingCustomInput) {
+                existingCustomInput.remove();
+            }
+
+            // Handle form switching based on severity
+            const severity = window.titleToSeverityMap[selectedTitle]?.severity;
+            if (severity === 'minor') {
+                // Switch to violation form for minor offenses
+                window.ModalManager.hide('incidentFormModal');
+                // Re-enable and show the violation form
+                const violationModal = document.getElementById('recordViolationModal');
+                if (violationModal) {
+                    // Update the violation title select to match
+                    const violationTitleSelect = document.getElementById('violationTitle');
+                    if (violationTitleSelect) {
+                        violationTitleSelect.value = selectedTitle;
+                        // Trigger change event to update UI
+                        violationTitleSelect.dispatchEvent(new Event('change'));
+                    }
+                    window.ModalManager.show('recordViolationModal');
+                }
+            }
+            // If major, stay in incident form (no action needed)
+        });
+    }
 
     // Add submit handler
     const incidentForm = document.getElementById('incidentForm');
@@ -1556,12 +1649,14 @@ function showIncidentForm() {
                 const violationForm = document.getElementById('recordViolationForm');
                 const formData = new FormData();
 
+                // Get violation title from incident form
+                const violationTitle = document.getElementById('incidentViolation').value;
+                const severity = window.titleToSeverityMap[violationTitle]?.severity || 'major';
+                const category = window.titleToSeverityMap[violationTitle]?.category || null;
+
                 // Manually append all required fields from the form
                 formData.append('student_id', student.id);
-                formData.append('title', getViolationTitle());
-                const violationTitle = getViolationTitle();
-                const severity = titleToSeverityMap[violationTitle]?.severity || 'major';
-                const category = titleToSeverityMap[violationTitle]?.category || null;
+                formData.append('title', violationTitle);
                 formData.append('description', details.trim());
                 formData.append('severity', severity);
                 formData.append('major_category', category);
