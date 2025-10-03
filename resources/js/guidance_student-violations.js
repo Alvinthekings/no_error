@@ -533,100 +533,83 @@ window.editViolation = function(violationId) {
 
             // Populate modal body
             modalBody.innerHTML = `
-                <div class="alert alert-success alert-dismissible fade show">
-                    <strong>Success!</strong> Loaded violation data for editing.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="row">
+        <!-- Left Column: Student Info & Basic Violation Details -->
+        <div class="col-lg-6">
+            <h6 class="mb-3">Student Information</h6>
+            <div class="row g-2">
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Student Name</label>
+                    <select class="form-select form-select-sm" id="edit_student_id" name="student_id" required disabled>
+                        ${students.length > 0 ? students.map(student => `
+                            <option value="${student.id}" ${student.id == (violation.student ? violation.student.id : violation.student_id) ? 'selected' : ''}>
+                                ${student.first_name} ${student.last_name} (${student.student_id || 'No ID'})
+                            </option>
+                        `).join('') : '<option value="">No students available</option>'}
+                    </select>
+                    <small class="text-muted">Student cannot be changed.</small>
                 </div>
-                <div class="row">
-                    <!-- Left Column: Student Info & Basic Violation Details -->
-                    <div class="col-lg-6">
-                        <h6 class="mb-3">Student Information</h6>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label fw-bold small">Student Name</label>
-                                <select class="form-select form-select-sm" id="edit_student_id" name="student_id" required ${studentSelectDisabled}>
-                                    ${students.length > 0 ? students.map(student => `
-                                        <option value="${student.id}" ${student.id == (violation.student ? violation.student.id : violation.student_id) ? 'selected' : ''}>
-                                            ${student.first_name} ${student.last_name} (${student.student_id || 'No ID'})
-                                        </option>
-                                    `).join('') : '<option value="">No students available</option>'}
-                                </select>
-                                ${studentSelectHelp}
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small">Student ID</label>
-                                <input type="text" class="form-control form-control-sm" value="${violation.student_id || 'N/A'}" readonly>
-                            </div>
-                            <div class="col-3">
-                                <label class="form-label fw-bold small">Grade</label>
-                                <input type="text" class="form-control form-control-sm" value="${violation.grade_level || 'N/A'}" readonly>
-                            </div>
-                            <div class="col-3">
-                                <label class="form-label fw-bold small">Section</label>
-                                <input type="text" class="form-control form-control-sm" value="${violation.section || 'N/A'}" readonly>
-                            </div>
-                        </div>
+            </div>
 
-                        <h6 class="mt-3 mb-3">Violation Details</h6>
-                        <div class="mb-2">
-                            <label class="form-label fw-bold small">Title</label>
-                            <input type="text" class="form-control form-control-sm" id="edit_title" name="title" value="${violation.title || ''}" required>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label fw-bold small">Status</label>
-                                <select class="form-select form-select-sm" id="edit_status" name="status" required>
-                                    <option value="pending" ${violation.status === 'pending' ? 'selected' : ''}>Pending</option>
-                                    <option value="investigating" ${violation.status === 'investigating' ? 'selected' : ''}>Investigating</option>
-                                    <option value="resolved" ${violation.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-                                    <option value="dismissed" ${violation.status === 'dismissed' ? 'selected' : ''}>Dismissed</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-2">
-                            <div class="col-6">
-                                <label class="form-label fw-bold small">Date</label>
-                                <input type="date" class="form-control form-control-sm" id="edit_violation_date" name="violation_date" value="${violation.violation_date ? (violation.violation_date.includes('T') ? violation.violation_date.split('T')[0] : violation.violation_date) : ''}" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-bold small">Time</label>
-                                <input type="time" class="form-control form-control-sm" id="edit_violation_time" name="violation_time" value="${violation.violation_time ? (violation.violation_time.length > 5 ? violation.violation_time.substring(0, 5) : violation.violation_time) : ''}">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right Column: Investigation & Resolution Details -->
-                    <div class="col-lg-6">
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">Student Statement</label>
-                            <textarea class="form-control form-control-sm" id="edit_student_statement" name="student_statement" rows="3">${violation.student_statement || ''}</textarea>
-                        </div>
-
-                        <h6 class="mt-3 mb-3">Resolution Details</h6>
-                        <div class="mb-2" id="edit_resolution_wrapper" style="display: ${(violation.status === 'resolved' || violation.status === 'dismissed') ? 'block' : 'none'};">
-                            <label class="form-label fw-bold small">Resolution</label>
-                            <textarea class="form-control form-control-sm" id="edit_resolution" name="resolution" rows="2">${violation.resolution || ''}</textarea>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label fw-bold small">Disciplinary Action</label>
-                            <textarea class="form-control form-control-sm" id="edit_disciplinary_action" name="disciplinary_action" rows="2">${violation.disciplinary_action || ''}</textarea>
-                        </div>
-                        <div class="mb-2">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="edit_parent_notified" name="parent_notified" value="1" ${violation.parent_notified ? 'checked' : ''}>
-                                <label class="form-check-label fw-bold small" for="edit_parent_notified">
-                                    Parent/Guardian Notified
-                                </label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold small">Additional Notes</label>
-                            <textarea class="form-control form-control-sm" id="edit_notes" name="notes" rows="3">${violation.notes || ''}</textarea>
-                        </div>
-                    </div>
+            <h6 class="mt-3 mb-3">Violation Details</h6>
+            <div class="mb-2">
+                <label class="form-label fw-bold small">Title</label>
+                <input type="text" class="form-control form-control-sm" id="edit_title" name="title" value="${violation.title || ''}" required>
+            </div>
+            <div class="col-12">
+    <label class="form-label fw-bold small">Status</label>
+    <select class="form-select form-select-sm" id="edit_status" name="status" required disabled>
+        <option value="pending" ${violation.status === 'pending' ? 'selected' : ''}>Pending</option>
+        <option value="in progress" ${violation.status === 'in progress' ? 'selected' : ''}>In Progress</option>
+        <option value="resolved" ${violation.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+    </select>
+    <small class="text-muted">Status cannot be changed.</small>
+</div>
+            </div>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="form-label fw-bold small">Date</label>
+                    <input type="date" class="form-control form-control-sm" id="edit_violation_date" name="violation_date" value="${violation.violation_date ? (violation.violation_date.includes('T') ? violation.violation_date.split('T')[0] : violation.violation_date) : ''}" required>
                 </div>
-            `;
+                <div class="col-6">
+                    <label class="form-label fw-bold small">Time</label>
+                    <input type="time" class="form-control form-control-sm" id="edit_violation_time" name="violation_time" value="${violation.violation_time ? (violation.violation_time.length > 5 ? violation.violation_time.substring(0, 5) : violation.violation_time) : ''}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Investigation & Resolution Details -->
+        <div class="col-lg-6">
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Student Statement</label>
+                <textarea class="form-control form-control-sm" id="edit_student_statement" name="student_statement" rows="3">${violation.student_statement || ''}</textarea>
+            </div>
+
+            <h6 class="mt-3 mb-3">Resolution Details</h6>
+            <div class="mb-2" id="edit_resolution_wrapper" style="display: ${(violation.status === 'resolved' || violation.status === 'dismissed') ? 'block' : 'none'};">
+                <label class="form-label fw-bold small">Resolution</label>
+                <textarea class="form-control form-control-sm" id="edit_resolution" name="resolution" rows="2">${violation.resolution || ''}</textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label fw-bold small">Disciplinary Action</label>
+                <textarea class="form-control form-control-sm" id="edit_disciplinary_action" name="disciplinary_action" rows="2">${violation.disciplinary_action || ''}</textarea>
+            </div>
+            <div class="mb-2">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="edit_parent_notified" name="parent_notified" value="1" ${violation.parent_notified ? 'checked' : ''}>
+                    <label class="form-check-label fw-bold small" for="edit_parent_notified">
+                        Parent/Guardian Notified
+                    </label>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Additional Notes</label>
+                <textarea class="form-control form-control-sm" id="edit_notes" name="notes" rows="3">${violation.notes || ''}</textarea>
+            </div>
+        </div>
+    </div>
+`;
+
 
             console.log('✅ Modal populated successfully');
 
