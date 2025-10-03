@@ -97,9 +97,10 @@
           <table class="table table-hover align-middle" id="violationsTable">
             <thead>
               <tr>
-                <th>Violation</th>
                 <th>Student</th>
+                <th>Violation</th>
                 <th>Date</th>
+                <th>Sanction</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -123,6 +124,9 @@
                   @endif
                 </td>
                 <td>
+                  {{ $violation->sanction ?? 'N/A' }}
+                </td>
+                <td>
                   <div class="btn-group" role="group">
                     <button type="button" class="btn btn-sm btn-outline-primary"
                             onclick="viewViolation({{ $violation->id }})"
@@ -144,7 +148,7 @@
               </tr>
               @empty
               <tr>
-                <td colspan="4" class="text-center py-5">
+                <td colspan="5" class="text-center py-5">
                   <i class="ri-alert-line display-4 text-muted"></i>
                   <p class="text-muted mt-2">No violations found</p>
                 </td>
@@ -189,123 +193,27 @@
 
           <div class="row">
             <div class="col-md-6">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Title/Offense</label>
-            <select class="form-select" name="title" id="violationTitle" required>
-              <option value="">-- Select Offense --</option>
-            </select>
-            <small class="text-muted">Select an offense to automatically determine severity and category</small>
-          </div>
-
-          <!-- Violation Type Selector -->
-          <div class="mb-3">
-            <label for="violationType" class="form-label">Violation Type</label>
-            <select class="form-select" id="violationType">
-              <option value="">-- Select Violation --</option>
-              <option value="minor">Minor</option>
-              <option value="major">Major</option>
-            </select>
-          </div>
-
-          <!-- Minor Section -->
-          <div id="minorFields" style="display: none;">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Title/Offense</label>
-                <select class="form-select" id="minorTitle">
-                  <option>Using profane and indecent language</option>
-                  <option>Cheating</option>
-                  <option>Bullying</option>
+              <div class="mb-3">
+                <label class="form-label fw-bold">Title/Offense</label>
+                <select class="form-select" name="title" id="violationTitle" required>
+                  <option value="">-- Select Offense --</option>
                 </select>
+                <small class="text-muted">Select an offense to automatically determine severity and category</small>
               </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Violation Date</label>
-                <input type="date" class="form-control" id="minorDate">
+
+              <div class="mb-3">
+                <label class="form-label fw-bold">Student</label>
+                <div class="position-relative">
+                  <input type="text" class="form-control" id="violationStudentSearch" placeholder="Type student name or ID..." autocomplete="off">
+                  <div id="studentSuggestions" class="suggestions-list" style="display: none;">
+                    <!-- Suggestions will be populated here -->
+                  </div>
+                </div>
+                <div id="selectedStudentsContainer" class="mt-2">
+                  <!-- Selected students will be added here -->
+                </div>
+                <small class="text-muted">Start typing to search for students</small>
               </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Student(s)</label>
-                <input id="minorStudents" class="form-control" placeholder="Type student names...">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Violation Time</label>
-                <input type="time" class="form-control" id="minorTime">
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Location</label>
-              <input type="text" class="form-control" id="minorLocation" placeholder="e.g., Classroom, Cafeteria, Playground">
-            </div>
-          </div>
-
-          <!-- Major Section -->
-          <div id="majorFields" style="display: none;">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Title/Offense</label>
-                <select class="form-select" id="majorTitle">
-                  <option>Using profane and indecent language</option>
-                  <option>Cheating</option>
-                  <option>Bullying</option>
-                </select>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Violation Date</label>
-                <input type="date" class="form-control" id="majorDate">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Student(s)</label>
-                <input id="majorStudents" class="form-control" placeholder="Type student names...">
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Violation Time</label>
-                <input type="time" class="form-control" id="majorTime">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Severity</label>
-                <input type="text" class="form-control" value="major" readonly>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Major Category</label>
-                <input type="text" class="form-control" value="Category 1" readonly>
-              </div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Description / Details</label>
-              <textarea class="form-control" rows="3" id="majorDescription"></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Attachments</label>
-              <input type="file" class="form-control" multiple id="majorAttachments">
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Location</label>
-              <input type="text" class="form-control" id="majorLocation" placeholder="e.g., Classroom, Cafeteria, Playground">
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Witnesses</label>
-              <input type="text" class="form-control mb-2" placeholder="Witness name" id="majorWitnesses">
-              <button type="button" class="btn btn-sm btn-outline-secondary" id="addWitnessBtn">+ Add Witness</button>
-            </div>
-          </div>
-
-          <div id="selectedStudentsContainer" class="mt-2">
-            <!-- Selected students will be added here -->
-          </div>
-          <small class="text-muted">Start typing to search for students</small>
 
 
             </div>

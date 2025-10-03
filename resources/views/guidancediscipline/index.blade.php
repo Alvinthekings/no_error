@@ -1,4 +1,6 @@
 <x-guidance-layout>
+@vite(['resources/js/guidance_student-violations.js'])
+
    <!-- MAIN CONTENT -->
       <main class="col-12 col-md-10 px-4 py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -110,7 +112,6 @@
           <table class="table table-striped align-middle">
             <thead>
               <tr>
-                <th>#</th>
                 <th>Student</th>
                 <th>Violation</th>
                 <th>Date</th>
@@ -121,7 +122,6 @@
             <tbody>
               @foreach($weeklyViolations as $index => $violation)
               <tr>
-                <td>{{ $index + 1 }}</td>
                 <td>{{ $violation->student->first_name }} {{ $violation->student->last_name }}</td>
                 <td>{{ $violation->title }}</td>
                 <td>{{ $violation->violation_date->format('M j, Y') }}</td>
@@ -131,11 +131,10 @@
                   </span>
                 </td>
                 <td class="text-center">
-                  <button class="btn btn-sm btn-outline-primary view-violation-btn"
-                          data-violation-id="{{ $violation->id }}"
-                          data-bs-toggle="modal"
-                          data-bs-target="#violationModal">
-                    <i class="ri-eye-line"></i> View
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          onclick="viewViolation({{ $violation->id }})"
+                          title="View Details">
+                    <i class="ri-eye-line"></i>
                   </button>
                 </td>
               </tr>
@@ -145,4 +144,19 @@
         </div>
         @endif
       </main>
+
+  <!-- VIEW VIOLATION MODAL -->
+  <div class="modal fade" id="viewViolationModal" tabindex="-1" aria-labelledby="viewViolationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewViolationModalLabel">Violation Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="viewViolationModalBody">
+          <!-- Content will be loaded dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
 </x-guidance-layout>

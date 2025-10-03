@@ -14,7 +14,6 @@ function debounce(func, wait) {
   };
 }
 
-// Global offense options
 window.offenseOptions = {
     minor: [
         "Not wearing of prescribed uniform and Improper wearing of school ID",
@@ -72,6 +71,381 @@ window.offenseOptions = {
         ]
     }
 };
+
+// Automatic Sanction Management System
+window.SanctionSystem = {
+    // Student violation tracking
+    studentViolations: new Map(),
+    
+    // Initialize from server data
+    initFromServer(violationsData = []) {
+        this.studentViolations.clear();
+        violationsData.forEach(violation => {
+            this.addViolationToHistory(
+                violation.student_id, 
+                violation.severity, 
+                violation.category
+            );
+        });
+    },
+    
+    // Add violation to student history
+    addViolationToHistory(studentId, severity, category) {
+        if (!this.studentViolations.has(studentId)) {
+            this.studentViolations.set(studentId, {
+                minorCount: 0,
+                majorCount: 0,
+                majorByCategory: { 1: 0, 2: 0, 3: 0 },
+                allViolations: []
+            });
+        }
+        
+        const studentRecord = this.studentViolations.get(studentId);
+        const violationRecord = {
+            severity,
+            category,
+            date: new Date().toISOString(),
+            sanction: null
+        };
+        
+        if (severity === 'minor') {
+            studentRecord.minorCount++;
+        } else if (severity === 'major') {
+            studentRecord.majorCount++;
+            if (category) {
+                studentRecord.majorByCategory[category] = 
+                    (studentRecord.majorByCategory[category] || 0) + 1;
+            }
+        }
+        
+        studentRecord.allViolations.push(violationRecord);
+        return studentRecord;
+    },
+    
+    // Calculate automatic sanction based on policy
+    calculateAutomaticSanction(studentId, severity, category) {
+        const studentRecord = this.addViolationToHistory(studentId, severity, category);
+        
+        if (severity === 'minor') {
+            return this.calculateMinorSanction(studentRecord.minorCount);
+        } else if (severity === 'major') {
+            return this.calculateMajorSanction(studentRecord.majorCount, category);
+        }
+        
+        return null;
+    },
+    
+    // Minor offense sanctions (from policy 2.6.1)
+    calculateMinorSanction(offenseCount) {
+        switch(offenseCount) {
+            case 1:
+                return {
+                    sanction: "Verbal reprimand / warning",
+                    deportmentGrade: "No change",
+                    suspension: "None",
+                    notes: "First minor offense"
+                };
+            case 2:
+                return {
+                    sanction: "Written warning", 
+                    deportmentGrade: "No change",
+                    suspension: "None",
+                    notes: "Second minor offense"
+                };
+            case 3:
+                return {
+                    sanction: "One step lower in Deportment Grade",
+                    deportmentGrade: "Lowered by one step",
+                    suspension: "None", 
+                    notes: "Third minor offense - cumulative sanction"
+                };
+            default:
+                return {
+                    sanction: "One step lower in Deportment Grade",
+                    deportmentGrade: "Lowered by one step", 
+                    suspension: "None",
+                    notes: `Repeat minor offense (${offenseCount} total)`
+                };
+        }
+    },
+    
+    // Major offense sanctions (from policy 2.6.2)
+    calculateMajorSanction(offenseCount, category) {
+        const categoryText = category ? `Category ${category}` : "Major";
+        
+        switch(offenseCount) {
+            case 1:
+                return {
+                    sanction: "One step lower in Deportment Grade, CS",
+                    deportmentGrade: "Lowered by one step",
+                    suspension: "None",
+                    notes: `First ${categoryText} offense - Community Service required`
+                };
+            case 2:
+                let suspensionDays = "3-5 days";
+                if (category === 3) suspensionDays = "5-7 days";
+                
+                return {
+                    sanction: "NI in Deportment, " + suspensionDays + " suspension, CS",
+                    deportmentGrade: "Needs Improvement (NI)",
+                    suspension: suspensionDays,
+                    notes: `Second ${categoryText} offense - escalating sanctions`
+                };
+            case 3:
+                return {
+                    sanction: "NI in Deportment, Dismissal or Expulsion",
+                    deportmentGrade: "Needs Improvement (NI)", 
+                    suspension: "Dismissal/Expulsion",
+                    notes: `Third ${categoryText} offense - maximum sanction`
+                };
+            default:
+                return {
+                    sanction: "NI in Deportment, Dismissal or Expulsion",
+                    deportmentGrade: "Needs Improvement (NI)",
+                    suspension: "Dismissal/Expulsion", 
+                    notes: `Multiple ${categoryText} offenses (${offenseCount} total) - disciplinary hearing required`
+                };
+        }
+    },
+    
+    // Get student violation summary
+    getStudentSummary(studentId) {
+        if (!this.studentViolations.has(studentId)) {
+            return {
+                minorCount: 0,
+                majorCount: 0,
+                totalCount: 0,
+                currentSanction: "No violations"
+            };
+        }
+        
+        const record = this.studentViolations.get(studentId);
+        return {
+            minorCount: record.minorCount,
+            majorCount: record.majorCount,
+            majorByCategory: {...record.majorByCategory},
+            totalCount: record.minorCount + record.majorCount,
+            allViolations: [...record.allViolations]
+        };
+    },
+    
+    // Reset student violations (for administrative purposes)
+    resetStudentRecord(studentId) {
+        this.studentViolations.delete(studentId);
+    }
+};
+
+// Enhanced violation form submission with automatic sanctions
+function setupEnhancedViolationSubmission() {
+    const violationForm = document.getElementById('recordViolationForm');
+    if (!violationForm) return;
+
+    violationForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!window.selectedStudents || window.selectedStudents.length === 0) {
+            alert('Please select at least one student for the violation.');
+            return;
+        }
+
+        const submitBtn = document.querySelector('#recordViolationModal button[type="submit"]');
+        const originalText = submitBtn.textContent;
+
+        // Show loading state
+        submitBtn.textContent = 'Calculating Sanctions...';
+        submitBtn.disabled = true;
+
+        try {
+            const title = getViolationTitle();
+            const severity = window.titleToSeverityMap[title]?.severity || 'minor';
+            const category = window.titleToSeverityMap[title]?.category || null;
+            
+            // Process each student with automatic sanctions
+            const results = [];
+            for (const student of window.selectedStudents) {
+                // Calculate automatic sanction
+                const automaticSanction = window.SanctionSystem.calculateAutomaticSanction(
+                    student.id, 
+                    severity, 
+                    category
+                );
+                
+                const formData = new FormData();
+                formData.append('student_id', student.id);
+                formData.append('title', title);
+                formData.append('violation_date', document.getElementById('violationDate').value);
+                formData.append('violation_time', document.getElementById('violationTime').value);
+                formData.append('severity', severity);
+                formData.append('major_category', category);
+                formData.append('status', 'pending');
+                
+                // Add automatic sanction data
+                formData.append('automatic_sanction', automaticSanction.sanction);
+                formData.append('deportment_grade_action', automaticSanction.deportmentGrade);
+                formData.append('suspension_days', automaticSanction.suspension);
+                formData.append('sanction_notes', automaticSanction.notes);
+                
+                // Get student violation history for context
+                const studentHistory = window.SanctionSystem.getStudentSummary(student.id);
+                formData.append('violation_history', JSON.stringify(studentHistory));
+
+                const csrfTokenEl = document.querySelector('meta[name="csrf-token"]');
+                const response = await fetch('/guidance/violations', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfTokenEl.getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Submission failed');
+                }
+
+                results.push({
+                    student: student.name,
+                    sanction: automaticSanction,
+                    data: data
+                });
+            }
+
+            // Show comprehensive results with sanctions
+            showSanctionSummary(results);
+            
+            // Close modal after delay
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('recordViolationModal'));
+                if (modal) modal.hide();
+                window.location.reload();
+            }, 5000);
+
+        } catch (err) {
+            console.error('Violation submission error:', err);
+            alert('Error submitting violation: ' + err.message);
+        } finally {
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    });
+}
+
+// Display sanction summary after submission
+function showSanctionSummary(results) {
+    const summaryHTML = `
+        <div class="alert alert-info">
+            <h5>Sanctions Applied Successfully</h5>
+            ${results.map(result => `
+                <div class="mb-3 p-2 border rounded">
+                    <strong>${result.student}</strong>
+                    <div class="small">
+                        <strong>Sanction:</strong> ${result.sanction.sanction}<br>
+                        <strong>Deportment Grade:</strong> ${result.sanction.deportmentGrade}<br>
+                        <strong>Suspension:</strong> ${result.sanction.suspension}<br>
+                        <em>${result.sanction.notes}</em>
+                    </div>
+                </div>
+            `).join('')}
+            <p class="mb-0 mt-2"><small>This message will close automatically and page will refresh.</small></p>
+        </div>
+    `;
+    
+    // Show in modal or as alert
+    const mainContent = document.querySelector('main');
+    const alertDiv = document.createElement('div');
+    alertDiv.innerHTML = summaryHTML;
+    mainContent.insertBefore(alertDiv, mainContent.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// Enhanced student sanction overview
+function loadStudentSanctionOverview(studentId) {
+    const summary = window.SanctionSystem.getStudentSummary(studentId);
+    const card = document.getElementById('sanctionOverviewCard');
+    const content = document.getElementById('sanctionOverviewContent');
+    
+    if (!card || !content) return;
+    
+    if (summary.totalCount === 0) {
+        card.style.display = 'none';
+        return;
+    }
+    
+    card.style.display = 'block';
+    
+    content.innerHTML = `
+        <div class="row text-center mb-3">
+            <div class="col-md-3">
+                <div class="border rounded p-2">
+                    <div class="h5 mb-1 text-primary">${summary.totalCount}</div>
+                    <small class="text-muted">Total Violations</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-2">
+                    <div class="h5 mb-1 text-warning">${summary.minorCount}</div>
+                    <small class="text-muted">Minor Offenses</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-2">
+                    <div class="h5 mb-1 text-danger">${summary.majorCount}</div>
+                    <small class="text-muted">Major Offenses</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="border rounded p-2">
+                    <div class="h6 mb-1">${getCurrentSanction(summary)}</div>
+                    <small class="text-muted">Current Status</small>
+                </div>
+            </div>
+        </div>
+        
+        ${summary.majorCount > 0 ? `
+            <div class="mb-3">
+                <h6>Major Offenses by Category:</h6>
+                <div class="d-flex gap-2">
+                    ${Object.entries(summary.majorByCategory).map(([cat, count]) => 
+                        count > 0 ? `<span class="badge bg-danger">Category ${cat}: ${count}</span>` : ''
+                    ).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        <div class="alert alert-warning">
+            <small>
+                <strong>Next Offense Consequences:</strong><br>
+                ${getNextSanctionWarning(summary)}
+            </small>
+        </div>
+    `;
+}
+
+function getCurrentSanction(summary) {
+    if (summary.majorCount >= 3) return 'Dismissal/Expulsion';
+    if (summary.majorCount === 2) return 'Suspension + NI Grade';
+    if (summary.majorCount === 1) return 'Grade Reduction + CS';
+    if (summary.minorCount >= 3) return 'Grade Reduction';
+    if (summary.minorCount === 2) return 'Written Warning';
+    if (summary.minorCount === 1) return 'Verbal Warning';
+    return 'Clear Record';
+}
+
+function getNextSanctionWarning(summary) {
+    if (summary.majorCount >= 2) return 'Next major offense may result in dismissal or expulsion';
+    if (summary.majorCount === 1) return 'Next major offense: suspension and NI grade';
+    if (summary.minorCount >= 2) return 'Next minor offense: reduction in deportment grade';
+    return 'Maintain clear record';
+}
 
 window.editViolation = function(violationId) {
     console.log('🚀 editViolation called with id:', violationId);
@@ -268,8 +642,6 @@ window.editViolation = function(violationId) {
                 });
             }
 
-
-
             // Add form submission handler
             const currentViolationId = violationId;
             form.onsubmit = async function(e) {
@@ -421,7 +793,15 @@ function getViolationTitle() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-
+    // Initialize sanction system when page loads
+    fetch('/guidance/violations/summary')
+        .then(response => response.json())
+        .then(data => {
+            window.SanctionSystem.initFromServer(data.violations);
+        })
+        .catch(error => {
+            console.error('Error loading violation summary:', error);
+        });
 
     // Create reverse mapping: title -> {severity, category}
     window.titleToSeverityMap = {};
@@ -435,8 +815,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     const violationTitleSelect = document.getElementById('violationTitle');
-
-
 
     // Handle title selection and custom offense input
     if (violationTitleSelect) {
@@ -556,6 +934,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: `${student.first_name} ${student.last_name} (${student.student_id || 'No ID'})`
                         });
                         updateSelectedStudentsDisplay();
+                        // Load sanction overview for the student
+                        loadStudentSanctionOverview(student.id);
                     })
                     .catch(error => console.error('Error fetching student:', error));
             }
@@ -571,120 +951,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form submission handler (only for minor violations now)
-    const violationForm = document.getElementById('recordViolationForm');
-    if (violationForm) {
-        violationForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            if (!window.selectedStudents || window.selectedStudents.length === 0) {
-                alert('Please select at least one student for the violation.');
-                return;
-            }
-
-            const submitBtn = document.querySelector('#recordViolationModal button[type="submit"]');
-            const originalText = submitBtn.textContent;
-
-            // Show loading state
-            submitBtn.textContent = 'Submitting...';
-            submitBtn.disabled = true;
-
-            try {
-                // Check if required elements exist
-                const violationForm = document.getElementById('recordViolationForm');
-                const dateEl = document.getElementById('violationDate');
-                const csrfTokenEl = document.querySelector('meta[name="csrf-token"]');
-
-                if (!violationForm || !dateEl || !csrfTokenEl) {
-                    throw new Error('Form elements are missing. Please refresh the page and try again.');
-                }
-
-                // Add CSRF token to form if not present
-                if (!violationForm.querySelector('input[name="_token"]')) {
-                    const tokenInput = document.createElement('input');
-                    tokenInput.type = 'hidden';
-                    tokenInput.name = '_token';
-                    tokenInput.value = csrfTokenEl.getAttribute('content');
-                    violationForm.appendChild(tokenInput);
-                }
-
-                // Ensure title is set for custom offenses
-                getViolationTitle(); // This will set the select value if custom
-
-                // Submit violation for each selected student
-                const results = [];
-                for (const student of window.selectedStudents) {
-                    const formData = new FormData();
-
-                    // Manually append all required fields from the form
-                    const title = getViolationTitle();
-                    const severity = window.titleToSeverityMap[title]?.severity || 'minor';
-                    const category = window.titleToSeverityMap[title]?.category || null;
-                    formData.append('student_id', student.id);
-                    formData.append('title', title);
-                    formData.append('violation_date', dateEl.value);
-                    formData.append('violation_time', document.getElementById('violationTime').value);
-                    formData.append('severity', severity);
-                    formData.append('major_category', category);
-                    formData.append('status', 'pending');
-
-                    console.log('Submitting violation data for student:', student.name, {
-                        student_id: student.id,
-                        title: formData.get('title')
-                    });
-
-                    const response = await fetch('/guidance/violations', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': csrfTokenEl.getAttribute('content'),
-                            'Accept': 'application/json'
-                        },
-                        body: formData
-                    });
-
-                    console.log('Response status:', response.status);
-
-                    if (!response.ok) {
-                        const responseText = await response.text();
-                        if (responseText.startsWith('<')) {
-                            throw new Error('Authentication required. Please log in again.');
-                        } else {
-                            throw new Error(`Server error: ${response.status}. ${responseText.substring(0, 200)}`);
-                        }
-                    }
-
-                    const responseText = await response.text();
-                    let data;
-                    try {
-                        data = JSON.parse(responseText);
-                    } catch (parseError) {
-                        throw new Error(`Server returned invalid JSON. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`);
-                    }
-
-                    if (!data.success) {
-                        throw new Error(data.message || `Server error: ${response.status}`);
-                    }
-
-                    results.push(data);
-                }
-
-                alert(`Violation recorded successfully for ${window.selectedStudents.length} student(s)!`);
-                // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('recordViolationModal'));
-                modal.hide();
-                // Refresh the page to show new violations
-                window.location.reload();
-
-            } catch (err) {
-                console.error('Violation submission error:', err);
-                alert('Error submitting violation: ' + err.message);
-            } finally {
-                // Restore button state
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
+    // Enhanced form submission handler with automatic sanctions
+    setupEnhancedViolationSubmission();
 
     // Initialize modal event listeners
     setTimeout(function() {
@@ -722,33 +990,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Search and filter functionality
     const searchInput = document.getElementById('searchInput');
-    const statusFilter = document.getElementById('statusFilter');
-    const severityFilter = document.getElementById('severityFilter');
-    const typeFilter = document.getElementById('typeFilter');
     const dateFilter = document.getElementById('dateFilter');
 
     function filterTable() {
       const searchTerm = searchInput.value.toLowerCase();
-      const statusValue = statusFilter.value;
-      const severityValue = severityFilter.value;
-      const typeValue = typeFilter.value;
       const dateValue = dateFilter.value;
       const rows = document.querySelectorAll('#violationsTable tbody tr');
 
       rows.forEach(row => {
-        if (row.cells.length < 8 || !row.cells[1] || !row.cells[2] || !row.cells[3] || !row.cells[4] || !row.cells[5] || !row.cells[6]) return; // Skip empty or malformed rows
+        if (row.cells.length < 5 || !row.cells[0] || !row.cells[1] || !row.cells[2]) return; // Skip empty or malformed rows
 
-        const student = row.cells[1].textContent.toLowerCase();
-        const violation = row.cells[2].textContent.toLowerCase();
-        const type = row.cells[3].textContent.toLowerCase();
-        const severity = row.cells[4].textContent.toLowerCase();
-        const date = row.cells[5].textContent.trim();
-        const status = row.cells[6].textContent.toLowerCase();
+        const student = row.cells[0].textContent.toLowerCase();
+        const violation = row.cells[1].textContent.toLowerCase();
+        const date = row.cells[2].textContent.trim();
 
         const matchesSearch = student.includes(searchTerm) || violation.includes(searchTerm);
-        const matchesStatus = !statusValue || status.includes(statusValue);
-        const matchesSeverity = !severityValue || severity.includes(severityValue);
-        const matchesType = !typeValue || type.includes(typeValue);
 
         // Date filtering: convert filter date to same format as table (M d, Y)
         let matchesDate = true;
@@ -762,11 +1018,11 @@ document.addEventListener('DOMContentLoaded', function() {
           matchesDate = date.includes(formattedFilterDate);
         }
 
-        row.style.display = matchesSearch && matchesStatus && matchesSeverity && matchesType && matchesDate ? '' : 'none';
+        row.style.display = matchesSearch && matchesDate ? '' : 'none';
       });
     }
 
-    [searchInput, statusFilter, severityFilter, typeFilter, dateFilter].forEach(element => {
+    [searchInput, dateFilter].forEach(element => {
       if (element) {
         element.addEventListener('input', filterTable);
         element.addEventListener('change', filterTable);
@@ -821,6 +1077,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!window.selectedStudents.some(s => s.id === studentId)) {
         window.selectedStudents.push({ id: studentId, name: studentName });
         updateSelectedStudentsDisplay();
+        // Load sanction overview for the selected student
+        loadStudentSanctionOverview(studentId);
       }
       studentSearchInput.value = '';
       studentSuggestions.style.display = 'none';
@@ -841,6 +1099,13 @@ document.addEventListener('DOMContentLoaded', function() {
       if (index > -1) {
         window.selectedStudents.splice(index, 1);
         updateSelectedStudentsDisplay();
+        // Update sanction overview
+        if (window.selectedStudents.length > 0) {
+          loadStudentSanctionOverview(window.selectedStudents[0].id);
+        } else {
+          const card = document.getElementById('sanctionOverviewCard');
+          if (card) card.style.display = 'none';
+        }
       }
     };
 
@@ -1087,6 +1352,7 @@ window.deleteViolation = function(violationId) {
       });
     }
   }
+
 
 // Helper function to update violation row in table
 window.updateViolationRow = function(violationId, violation) {

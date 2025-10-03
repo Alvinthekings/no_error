@@ -9,6 +9,7 @@ use App\Models\GuidanceDiscipline;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\Violation;
+use App\Models\Sanction;
 use Illuminate\Support\Facades\Storage;
 
 class GuidanceDisciplineController extends Controller
@@ -100,6 +101,27 @@ class GuidanceDisciplineController extends Controller
 
         // Default to minor if not found
         return ['severity' => 'minor', 'major_category' => null];
+    }
+
+    /**
+     * Determine sanction based on violation severity, category, and student's violation history
+     */
+    private function determineSanction($studentId, $severity, $majorCategory = null)
+    {
+        // Count previous violations of the same severity and category
+        $query = Violation::where('student_id', $studentId)
+                         ->where('severity', $severity);
+
+        if ($severity === 'major' && $majorCategory) {
+            $query->where('major_category', $majorCategory);
+        }
+
+        $offenseCount = $query->count() + 1; // +1 for the current violation
+
+        // Get the appropriate sanction
+        $sanction = Sanction::getSanction($severity, $majorCategory, $offenseCount);
+
+        return $sanction ? $sanction->sanction_type : 'No sanction defined';
     }
 
     // PUBLIC METHODS (No authentication required)
@@ -468,6 +490,15 @@ class GuidanceDisciplineController extends Controller
             $validatedData['major_category'] = $severityData['major_category'];
         }
 
+        // Auto-determine sanction based on severity, category, and student's violation history
+        if (!isset($validatedData['sanction']) || empty($validatedData['sanction'])) {
+            $validatedData['sanction'] = $this->determineSanction(
+                $validatedData['student_id'],
+                $validatedData['severity'],
+                $validatedData['major_category']
+            );
+        }
+
         $violation = Violation::create($validatedData);
 
         // Handle AJAX requests
@@ -597,6 +628,15 @@ class GuidanceDisciplineController extends Controller
             $severityData = $this->determineSeverity($validatedData['title']);
             $validatedData['severity'] = $severityData['severity'];
             $validatedData['major_category'] = $severityData['major_category'];
+        }
+
+        // Auto-determine sanction based on severity, category, and student's violation history
+        if (!isset($validatedData['sanction']) || empty($validatedData['sanction'])) {
+            $validatedData['sanction'] = $this->determineSanction(
+                $validatedData['student_id'],
+                $validatedData['severity'],
+                $validatedData['major_category']
+            );
         }
 
         $violation->update($validatedData);

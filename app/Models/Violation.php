@@ -14,6 +14,7 @@ class Violation extends Model
         'description',
         'severity',
         'major_category',
+        'sanction',
         'violation_date',
         'violation_time',
         'location',
